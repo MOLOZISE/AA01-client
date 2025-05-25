@@ -38,13 +38,11 @@ function App() {
 
     try {
       if (mode === "agentic") {
-        // ✅ Agentic 모드: runWorkflow 호출
         const reply = await runWorkflow(input);
         const assistantMessage = { role: "assistant", content: reply };
         const finalMessages = [...updatedMessages, assistantMessage];
         setMessages(finalMessages);
       } else {
-        // ✅ 기존 Chat 모드: sendChat 호출
         const contextMessages = clipMessages(updatedMessages, 10);
         const fileMessages = updatedMessages.filter(msg => msg.role === "file");
         const allContext = [...fileMessages, ...contextMessages];
