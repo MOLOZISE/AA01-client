@@ -1,7 +1,7 @@
 import React from "react";
 
 interface SessionListPanelProps {
-  sessions: { session_id: string; created_at: string }[];
+  sessions: { session_id: string; created_at: string; summary: string }[];
   currentSessionId: string;
   handleNewSession: () => void;
   handleSelectSession: (sessionId: string) => void;
@@ -28,7 +28,7 @@ const SessionListPanel: React.FC<SessionListPanelProps> = ({ sessions, currentSe
               onClick={() => handleSelectSession(session.session_id)}
               className="text-left flex-1 truncate"
             >
-              {session.session_id}
+              {session.summary || session.session_id}
             </button>
             <button
               className="text-red-400 ml-2"

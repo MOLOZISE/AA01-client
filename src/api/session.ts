@@ -17,3 +17,8 @@ export async function fetchSessionMessages(sessionId: string) {
   const response = await api.get(`/api/sessions/${sessionId}/messages`);
   return response.data;
 }
+
+export async function saveSessionSummary(sessionId: string, summary: string) {
+  const response = await api.post(`/api/sessions/${sessionId}/summary`, { summary });
+  return response.data;
+}

@@ -17,11 +17,11 @@ export async function saveMessage(session_id: string, role: string, content: str
 
 // 세션별 메시지 불러오기
 export async function loadMessages(sessionId: string): Promise<Message[]> {
-  const response = await api.get(`/api/messages/${sessionId}`);
+  const response = await api.get(`/api/sessions/${sessionId}/messages`);
   return response.data;
 }
 
-// 세션 전체 삭제
+// 세션 메시지 삭제
 export async function deleteSessionMessages(sessionId: string) {
   const response = await api.delete(`/api/messages/${sessionId}`);
   return response.data;
