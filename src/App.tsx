@@ -14,6 +14,7 @@ import NotePanel from "./components/NotePanel";
 import { vectorStoreAdd } from "./api/vectorstore";
 import { sendChatStream } from "./api/chat";
 import { saveSessionSummary } from "./api/session";
+import { summarizeFileContent, uploadFileSummary } from "./api/fileSummary"; // ✅ 상단 import 추가
 
 function App() {
   const [input, setInput] = useState("");
@@ -31,6 +32,7 @@ function App() {
   const [selectedModel, setSelectedModel] = useState<"lm" | "google">("google");
   const [streamingReply, setStreamingReply] = useState("");
   const [isNewSession, setIsNewSession] = useState(false);
+  
 
 //  const isNewSessionRef = useRef(false);
 
@@ -213,6 +215,28 @@ function App() {
     setIsNewSession(true);
   };
 
+  // const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  //   if (e.target.files) {
+  //     const files = Array.from(e.target.files);
+  //     setUploadedFiles((prev) => [...prev, ...files]);
+
+  //     for (const file of files) {
+  //       try {
+  //         const content = await readFileContent(file);
+  //         if (currentSessionId) {
+  //           const fileMessage = { role: "file", content: `(파일 업로드 내용 일부) ${content.slice(0, 1000)}` };
+  //           const updatedMessages = [...messages, fileMessage];
+  //           setMessages(updatedMessages);
+  //           await saveMessage(currentSessionId, "file", content.slice(0, 1000));
+  //           await vectorStoreAdd(file.name, content);
+  //         }
+  //       } catch (error) {
+  //         console.error("파일 읽기 실패", error);
+  //       }
+  //     }
+  //   }
+  // };
+
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
       const files = Array.from(e.target.files);
@@ -221,15 +245,23 @@ function App() {
       for (const file of files) {
         try {
           const content = await readFileContent(file);
+
+          // ✅ 1. 요약 생성
+          const summary = await summarizeFileContent(content);
+
+          // ✅ 2. 백엔드에 파일 정보 저장
+          await uploadFileSummary(file.name, summary, content);
+
+          // ✅ 3. 기존 메시지 흐름에도 반영 (필요시)
           if (currentSessionId) {
-            const fileMessage = { role: "file", content: `(파일 업로드 내용 일부) ${content.slice(0, 1000)}` };
+            const fileMessage = { role: "file", content: `(파일 요약) ${summary}` };
             const updatedMessages = [...messages, fileMessage];
             setMessages(updatedMessages);
-            await saveMessage(currentSessionId, "file", content.slice(0, 1000));
-            await vectorStoreAdd(file.name, content);
+            await saveMessage(currentSessionId, "file", summary); // 전체 말고 요약만 저장
           }
+
         } catch (error) {
-          console.error("파일 읽기 실패", error);
+          console.error("파일 처리 실패:", error);
         }
       }
     }

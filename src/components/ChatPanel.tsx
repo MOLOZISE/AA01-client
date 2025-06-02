@@ -1,9 +1,16 @@
 import React, { useState } from "react";
 import ReactMarkdown from "react-markdown";
+import { searchByLLM } from "../api/fileSearch"; // ✅ LLM 검색 API
+import { FileSearchResultPanel } from "./FileSearchResultPanel"; // ✅ 결과 표시 컴포넌트
 
 interface Message {
   role: string;
   content: string;
+}
+
+interface FileSearchResult {
+  filename: string;
+  reason?: string;
 }
 
 interface ChatPanelProps {
@@ -16,7 +23,7 @@ interface ChatPanelProps {
   onAddNote: (text: string) => void;
   onRegenerate: (original: string) => void;
   onSummarize: (text: string) => void;
-  streamingReply?: string; // ✅ 실시간 스트리밍 텍스트 받기
+  streamingReply?: string;
 }
 
 const ChatPanel: React.FC<ChatPanelProps> = ({
@@ -29,18 +36,30 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
   onAddNote,
   onRegenerate,
   onSummarize,
-  streamingReply // ✅ props로 받기
+  streamingReply
 }) => {
   const [addTodo, setAddTodo] = useState(false);
   const [addNote, setAddNote] = useState(false);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
+  const [searchResults, setSearchResults] = useState<FileSearchResult[]>([]); // ✅ 파일 검색 결과
 
-  const handleSendWithOptions = () => {
+  const handleSendWithOptions = async () => {
     if (addTodo) onAddTodo(input);
     if (addNote) onAddNote(input);
     handleSend();
     setAddTodo(false);
     setAddNote(false);
+
+    // ✅ 사용자 입력 기반 LLM 파일 검색 실행
+    if (input.trim()) {
+      try {
+        const results = await searchByLLM(input);
+        setSearchResults(results);
+      } catch (err) {
+        console.error("LLM 파일 검색 실패:", err);
+        setSearchResults([]);
+      }
+    }
   };
 
   const renderContent = (text: string, idx: number) => {
@@ -63,11 +82,11 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
           >
             {isOpen ? "접기" : "GPT 생각 보기"}
           </button>
-          <div className="text-sm text-gray-300 whitespace-pre-wrap">
-              <ReactMarkdown>
-                {content}
-              </ReactMarkdown>
+          {isOpen && (
+            <div className="text-sm text-gray-300 whitespace-pre-wrap">
+              <ReactMarkdown>{content}</ReactMarkdown>
             </div>
+          )}
         </div>
       );
       lastIndex = regex.lastIndex;
@@ -91,42 +110,24 @@ const ChatPanel: React.FC<ChatPanelProps> = ({
             <div className="whitespace-pre-wrap">{renderContent(msg.content, idx)}</div>
             {msg.role === "assistant" && (
               <div className="mt-2 flex gap-2 text-sm flex-wrap">
-                <button
-                  className="px-2 py-1 bg-blue-600 text-white rounded"
-                  onClick={() => onAddTodo(msg.content)}
-                >
-                  🗓 할 일로 추가
-                </button>
-                <button
-                  className="px-2 py-1 bg-green-600 text-white rounded"
-                  onClick={() => onAddNote(msg.content)}
-                >
-                  📝 메모로 저장
-                </button>
-                <button
-                  className="px-2 py-1 bg-yellow-600 text-white rounded"
-                  onClick={() => onSummarize(msg.content)}
-                >
-                  📄 요약하기
-                </button>
-                <button
-                  className="px-2 py-1 bg-purple-600 text-white rounded"
-                  onClick={() => onRegenerate(msg.content)}
-                >
-                  🔁 다시 생성
-                </button>
+                <button className="px-2 py-1 bg-blue-600 text-white rounded" onClick={() => onAddTodo(msg.content)}>🗓 할 일로 추가</button>
+                <button className="px-2 py-1 bg-green-600 text-white rounded" onClick={() => onAddNote(msg.content)}>📝 메모로 저장</button>
+                <button className="px-2 py-1 bg-yellow-600 text-white rounded" onClick={() => onSummarize(msg.content)}>📄 요약하기</button>
+                <button className="px-2 py-1 bg-purple-600 text-white rounded" onClick={() => onRegenerate(msg.content)}>🔁 다시 생성</button>
               </div>
             )}
           </div>
         ))}
 
-        {/* ✅ 실시간 스트리밍 메시지 출력 */}
         {streamingReply && currentSessionId && (
           <div className="p-2 rounded bg-zinc-700 text-white whitespace-pre-wrap">
-            <ReactMarkdown>
-              {streamingReply}
-            </ReactMarkdown>
+            <ReactMarkdown>{streamingReply}</ReactMarkdown>
           </div>
+        )}
+
+        {/* ✅ 관련 파일 결과 표시 */}
+        {searchResults.length > 0 && (
+          <FileSearchResultPanel results={searchResults} />
         )}
       </div>
 
